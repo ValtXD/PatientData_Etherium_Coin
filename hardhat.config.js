@@ -12,7 +12,7 @@ module.exports = {
     }
   },
   networks: {
-    goerli: {
+    sepolia: {
       url: process.env.QUICKNODE_URL,  // Usando a variável de ambiente QUICKNODE_URL
       accounts: [process.env.PRIVATE_KEY],  // A chave privada do usuário
     },

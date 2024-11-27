@@ -2,11 +2,22 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const db = require('./database');
-const { savePatientOnBlockchain } = require('./blockchain'); // Importa função para salvar na blockchain
+const { savePatientOnBlockchain } = require('./blockchain'); // Função para salvar na blockchain
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+
+// Validação simples para campos obrigatórios
+function validatePatientData(data) {
+  const requiredFields = ['nome', 'cpf', 'dataNascimento'];
+  for (const field of requiredFields) {
+    if (!data[field]) {
+      return `O campo ${field} é obrigatório.`;
+    }
+  }
+  return null;
+}
 
 // Rota para adicionar paciente
 app.post('/api/pacientes', async (req, res) => {
@@ -17,6 +28,12 @@ app.post('/api/pacientes', async (req, res) => {
     anotacoesRetorno
   } = req.body;
 
+  // Validação básica dos dados
+  const validationError = validatePatientData(req.body);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
+  }
+
   const query = `
     INSERT INTO Pacientes 
     (nome, cpf, dataNascimento, dataConsulta, relato, doencasPreexistentes, 
@@ -25,7 +42,7 @@ app.post('/api/pacientes', async (req, res) => {
   `;
 
   try {
-    // 1. Salvar no banco SQLite
+    // Salvar no banco SQLite
     db.run(query, [
       nome, cpf, dataNascimento, dataConsulta,
       relato, doencasPreexistentes, alergias,
@@ -33,21 +50,24 @@ app.post('/api/pacientes', async (req, res) => {
       anotacoesRetorno
     ], async function (err) {
       if (err) {
-        return res.status(500).json({ error: err.message });
+        console.error('Erro ao salvar no banco de dados:', err);
+        return res.status(500).json({ error: 'Erro ao salvar no banco de dados' });
       }
 
-      // 2. Salvar dados principais na blockchain
+      // Salvar na blockchain
       try {
         const receipt = await savePatientOnBlockchain(
           nome,
-          JSON.stringify({ diagnostico, examesSolicitados, anotacoesRetorno }) // Exemplo de dados que podem ir para a blockchain
+          JSON.stringify({ diagnostico, examesSolicitados, anotacoesRetorno }) // Apenas dados principais para a blockchain
         );
         res.status(201).json({ id: this.lastID, blockchainReceipt: receipt });
       } catch (blockchainError) {
+        console.error('Erro ao salvar na blockchain:', blockchainError);
         res.status(500).json({ error: 'Erro ao salvar na blockchain', details: blockchainError.message });
       }
     });
   } catch (error) {
+    console.error('Erro geral no processamento:', error);
     res.status(500).json({ error: 'Erro ao processar a solicitação', details: error.message });
   }
 });
@@ -57,3 +77,5 @@ const PORT = 5001;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
+
+module.exports = app;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Web3 from 'web3';
-import PatientContractABI from './artifacts/contracts/PatientData.sol/PatientData.json'; // Caminho correto do ABI
+import PatientContractABI from './artifacts/PatientData.json';
 import BarraSuperior from './componentes/layout/BarraSuperior';
 import BarraLateral from './componentes/layout/BarraLateral';
 import Exibir from './componentes/pages/Exibir';
@@ -14,32 +14,21 @@ function App() {
     const [contract, setContract] = useState(null);
     const [accounts, setAccounts] = useState([]);
 
-    // Exibir alerta se não houver provedor de Web3
     useEffect(() => {
-        if (!window.ethereum && !window.web3) {
-            alert('Nenhum provedor Web3 detectado! Certifique-se de que uma carteira Web3 (como MetaMask ou Argent) está instalada.');
+        if (!window.ethereum) {
+            alert('MetaMask não detectado! Instale o MetaMask para usar a aplicação.');
         }
     }, []);
 
     // Conectar à blockchain
     useEffect(() => {
         const connectBlockchain = async () => {
-            try {
-                const provider = window.ethereum || window.web3.currentProvider;
-
-                if (!provider) {
-                    console.error('Nenhum provedor Web3 detectado.');
-                    return;
-                }
-
-                const web3 = new Web3(provider);
-                await provider.request({ method: 'eth_requestAccounts' });
+            if (window.ethereum) {
+                const web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
 
                 const networkId = await web3.eth.net.getId();
                 const deployedNetwork = PatientContractABI.networks[networkId];
-
-                console.log('Network ID:', networkId);
-                console.log('Deployed Network:', deployedNetwork);
 
                 if (deployedNetwork) {
                     const contractInstance = new web3.eth.Contract(
@@ -49,13 +38,10 @@ function App() {
                     setContract(contractInstance);
 
                     const userAccounts = await web3.eth.getAccounts();
-                    console.log('User Accounts:', userAccounts);
                     setAccounts(userAccounts);
 
                     // Carregar pacientes armazenados na blockchain
                     const totalPacientes = await contractInstance.methods.getPatientCount().call();
-                    console.log('Total de Pacientes:', totalPacientes);
-
                     const loadedPacientes = [];
                     for (let i = 0; i < totalPacientes; i++) {
                         const paciente = await contractInstance.methods.getPatient(i).call();
@@ -65,8 +51,8 @@ function App() {
                 } else {
                     console.error('Contrato não encontrado na rede atual.');
                 }
-            } catch (error) {
-                console.error('Erro ao conectar à blockchain:', error);
+            } else {
+                console.error('Ethereum não detectado. Instale o MetaMask!');
             }
         };
 
@@ -93,14 +79,16 @@ function App() {
     };
 
     const handleDeletePaciente = (cpf) => {
+        // Para deletar, seria necessário implementar a lógica no contrato Solidity.
         console.warn('A função de deletar ainda não está integrada à blockchain.');
-        setPacientes((prevPacientes) => prevPacientes.filter((paciente) => paciente.cpf !== cpf));
+        setPacientes((prevPacientes) => prevPacientes.filter(paciente => paciente.cpf !== cpf));
     };
 
     const handleEditPaciente = (cpf, dadosAtualizados) => {
+        // Atualizar um paciente na blockchain também exigiria uma função no contrato.
         console.warn('A função de editar ainda não está integrada à blockchain.');
         setPacientes((prevPacientes) =>
-            prevPacientes.map((paciente) =>
+            prevPacientes.map(paciente =>
                 paciente.cpf === cpf ? { ...paciente, ...dadosAtualizados } : paciente
             )
         );
@@ -114,9 +102,9 @@ function App() {
                     <BarraLateral />
                     <div className="pages planodefundo">
                         <Routes>
-                            <Route exact path="/" element={<Home />} />
+                            <Route exact path='/' element={<Home />} />
                             <Route
-                                path="/Exibir"
+                                path='/Exibir'
                                 element={
                                     <Exibir
                                         pacientes={pacientes}
@@ -126,8 +114,12 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/Adicionar"
-                                element={<Adicionar onAddPaciente={handleAddPaciente} />}
+                                path='/Adicionar'
+                                element={
+                                    <Adicionar
+                                        onAddPaciente={handleAddPaciente}
+                                    />
+                                }
                             />
                         </Routes>
                     </div>

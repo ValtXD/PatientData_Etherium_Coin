@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import Select from 'react-select';
-import { ethers } from 'ethers';
-import PatientContractABI from '../../artifacts/contracts/PatientData.sol/PatientData.json'; 
 
 function Adicionar({ addPatientData }) {
     const [nome, setNome] = useState('');
@@ -15,8 +13,6 @@ function Adicionar({ addPatientData }) {
     const [diagnostico, setDiagnostico] = useState('');
     const [examesSolicitados, setExamesSolicitados] = useState('');
     const [anotacoesRetorno, setAnotacoesRetorno] = useState('');
-
-    const contractAddress = "0x365F49CC2eb782B1a6537aaA7a9361466Aa3dfdC"; // Substituir pelo endereço do contrato
 
     const doencasOptions = [
         { value: 'Hipertensão', label: 'Hipertensão' },
@@ -34,38 +30,11 @@ function Adicionar({ addPatientData }) {
         { value: 'Outros', label: 'Outros' },
     ];
 
-    const handleBlockchainSubmit = async (patientData) => {
-        try {
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const signer = provider.getSigner();
-            const contract = new ethers.Contract(contractAddress, PatientContractABI.abi, signer);
-
-            const tx = await contract.addPatient(
-                patientData.nome,
-                patientData.cpf,
-                patientData.dataNascimento,
-                patientData.dataConsulta,
-                patientData.relatos || '',
-                JSON.stringify(patientData.medicacoes),
-                JSON.stringify(patientData.doencasPreexistentes),
-                JSON.stringify(patientData.alergias),
-                patientData.diagnostico,
-                patientData.examesSolicitados || '',
-                patientData.anotacoesRetorno || ''
-            );
-
-            console.log('Enviando transação para a blockchain...');
-            await tx.wait();
-            console.log('Dados adicionados à blockchain com sucesso!');
-        } catch (error) {
-            console.error('Erro ao enviar dados para a blockchain:', error);
-        }
-    };
-
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
 
-        const patientData = {
+        // Chama a função passada como prop (addPatientData) para adicionar o paciente
+        addPatientData({
             nome,
             cpf,
             dataNascimento,
@@ -76,16 +45,8 @@ function Adicionar({ addPatientData }) {
             alergias,
             diagnostico,
             examesSolicitados,
-            anotacoesRetorno,
-        };
-
-        // Enviar dados para o backend, se aplicável
-        if (addPatientData) {
-            addPatientData(patientData);
-        }
-
-        // Enviar os dados para a blockchain
-        await handleBlockchainSubmit(patientData);
+            anotacoesRetorno
+        });
 
         // Limpar campos após o envio
         setNome('');
@@ -105,8 +66,8 @@ function Adicionar({ addPatientData }) {
         <div className="Adicionar">
             <h2>Adicionar Paciente</h2>
             <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Nome:</label>
+                <div className="form-group">
+                    <label>Nome Completo:</label>
                     <input
                         type="text"
                         value={nome}
@@ -114,7 +75,7 @@ function Adicionar({ addPatientData }) {
                         required
                     />
                 </div>
-                <div>
+                <div className="form-group">
                     <label>CPF:</label>
                     <input
                         type="text"
@@ -123,7 +84,7 @@ function Adicionar({ addPatientData }) {
                         required
                     />
                 </div>
-                <div>
+                <div className="form-group">
                     <label>Data de Nascimento:</label>
                     <input
                         type="date"
@@ -132,67 +93,73 @@ function Adicionar({ addPatientData }) {
                         required
                     />
                 </div>
-                <div>
+                <div className="form-group">
                     <label>Data da Consulta:</label>
                     <input
                         type="date"
                         value={dataConsulta}
                         onChange={(e) => setDataConsulta(e.target.value)}
+                        required
                     />
                 </div>
-                <div>
+                <div className="form-group">
                     <label>Relato:</label>
                     <textarea
                         value={relato}
                         onChange={(e) => setRelato(e.target.value)}
                     />
                 </div>
-                <div>
-                    <label>Medicações:</label>
+                <div className="form-group">
+                    <label>Medicações em Uso:</label>
                     <input
                         type="text"
                         value={medicacoes}
                         onChange={(e) => setMedicacoes(e.target.value.split(','))}
-                        placeholder="Separar por vírgulas"
                     />
+                    <small>Separar medicações com vírgula</small>
                 </div>
-                <div>
+                <div className="form-group">
                     <label>Doenças Preexistentes:</label>
                     <Select
                         isMulti
                         options={doencasOptions}
-                        onChange={(selected) => setDoencasPreexistentes(selected.map(option => option.value))}
+                        value={doencasPreexistentes.map(value => ({ value, label: value }))}
+                        onChange={(selectedOptions) => setDoencasPreexistentes(selectedOptions.map(option => option.value))}
                     />
                 </div>
-                <div>
+                <div className="form-group">
                     <label>Alergias:</label>
                     <Select
                         isMulti
                         options={alergiasOptions}
-                        onChange={(selected) => setAlergias(selected.map(option => option.value))}
+                        value={alergias.map(value => ({ value, label: value }))}
+                        onChange={(selectedOptions) => setAlergias(selectedOptions.map(option => option.value))}
                     />
                 </div>
-                <div>
+                <div className="form-group">
                     <label>Diagnóstico:</label>
-                    <textarea
+                    <input
+                        type="text"
                         value={diagnostico}
                         onChange={(e) => setDiagnostico(e.target.value)}
                     />
                 </div>
-                <div>
+                <div className="form-group">
                     <label>Exames Solicitados:</label>
-                    <textarea
+                    <input
+                        type="text"
                         value={examesSolicitados}
                         onChange={(e) => setExamesSolicitados(e.target.value)}
                     />
                 </div>
-                <div>
-                    <label>Anotações para Retorno:</label>
+                <div className="form-group">
+                    <label>Anotações de Retorno:</label>
                     <textarea
                         value={anotacoesRetorno}
                         onChange={(e) => setAnotacoesRetorno(e.target.value)}
                     />
                 </div>
+
                 <button type="submit" className="submit-button">Salvar Paciente</button>
             </form>
         </div>
